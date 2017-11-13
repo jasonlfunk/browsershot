@@ -41,6 +41,7 @@ class Browsershot
     protected $mobile = false;
     protected $touch = false;
     protected $dismissDialogs = false;
+    protected $browserWSEndpoint = null;
 
     /** @var \Spatie\Image\Manipulations */
     protected $imageManipulations;
@@ -70,6 +71,13 @@ class Browsershot
         $this->url = $url;
 
         $this->imageManipulations = new Manipulations();
+    }
+
+    public function setWSEndpoint(string $browserWSEndpoint)
+    {
+        $this->browserWSEndpoint = $browserWSEndpoint;
+
+        return $this;
     }
 
     public function setNodeBinary(string $nodeBinary)
@@ -302,6 +310,39 @@ class Browsershot
         }
     }
 
+    public function open()
+    {
+        $command = $this->createCommand('', '');
+
+        $setIncludePathCommand = "PATH={$this->includePath}";
+        
+        $nodeBinary = $this->nodeBinary ?: 'node';
+        
+        $setNodePathCommand = $this->getNodePathCommand($nodeBinary);
+        
+        $binPath = __DIR__.'/../bin/browser.js';
+        
+        $fullCommand =
+            $setIncludePathCommand.' '
+            .$setNodePathCommand.' '
+            .$nodeBinary.' '
+            .escapeshellarg($binPath).' open '
+            .escapeshellarg(json_encode($command));
+
+        $process = (new Process($fullCommand))->setTimeout($this->timeout);
+
+        $process->start();
+        
+        do {
+            sleep(1);
+            $browserWSEndpoint = $process->getOutput();
+        } while(!preg_match("/\n$/", $browserWSEndpoint));
+        
+        $newBrowser = clone $this;
+        $newBrowser->setWSEndpoint(trim($browserWSEndpoint));
+        return $newBrowser;
+    }
+
     public function bodyHtml(): string
     {
         $command = $this->createBodyHtmlCommand();
@@ -422,6 +463,10 @@ class Browsershot
     protected function createCommand(string $url, string $action, array $options = []): array
     {
         $command = compact('url', 'action', 'options');
+        
+        if ($this->browserWSEndpoint) {
+            $command['browserWSEndpoint'] = $this->browserWSEndpoint;
+        }
 
         $command['options']['viewport'] = [
             'width' => $this->windowWidth,
@@ -488,6 +533,7 @@ class Browsershot
             .$setNodePathCommand.' '
             .$nodeBinary.' '
             .escapeshellarg($binPath).' '
+            .escapeshellarg('call').' '
             .escapeshellarg(json_encode($command));
 
         $process = (new Process($fullCommand))->setTimeout($this->timeout);

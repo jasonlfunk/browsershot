@@ -1,16 +1,24 @@
 const puppeteer = require('puppeteer');
 
-const request = JSON.parse(process.argv[2]);
+const command = process.argv[2];
+const request = JSON.parse(process.argv[3]);
 
 const callChrome = async () => {
     let browser;
     let page;
 
     try {
-        browser = await puppeteer.launch({
-            ignoreHTTPSErrors: request.options.ignoreHttpsErrors,
-            args: request.options.args || []
-        });
+        if ('browserWSEndpoint' in request) {
+            browser = await puppeteer.connect({
+                browserWSEndpoint: request.browserWSEndpoint,
+                ignoreHTTPSErrors: request.options.ignoreHttpsErrors
+            });
+        } else {
+            // browser = await puppeteer.launch({
+            //     ignoreHTTPSErrors: request.options.ignoreHttpsErrors,
+            //     args: request.options.args || []
+            // });
+        }
 
         page = await browser.newPage();
 
@@ -39,7 +47,12 @@ const callChrome = async () => {
 
         console.log(await page[request.action](request.options));
 
-        await browser.close();
+        if ('browserWSEndpoint' in request) {
+            await page.close();
+        } else {
+            await browser.close();
+        } 
+        process.exit(0);
     } catch (exception) {
         if (browser) {
             await browser.close();
@@ -51,4 +64,25 @@ const callChrome = async () => {
     }
 };
 
-callChrome();
+const openChrome = async () => {
+    let browser;
+
+    try {
+        browser = await puppeteer.launch({
+            ignoreHTTPSErrors: request.options.ignoreHttpsErrors,
+            args: request.options.args || []
+        });
+        console.log(browser.wsEndpoint());
+        // Keep the process alive
+    } catch (exception) {
+        if (browser) {
+            await browser.close();
+        }
+
+        console.error(exception);
+
+        process.exit(1);
+    }
+};
+
+command === 'open' ? openChrome() : callChrome();
