@@ -42,6 +42,8 @@ class Browsershot
     protected $touch = false;
     protected $dismissDialogs = false;
     protected $browserWSEndpoint = null;
+    protected $javascriptEnabled = true;
+    protected $imagesDisabled = false;
 
     /** @var \Spatie\Image\Manipulations */
     protected $imageManipulations;
@@ -123,6 +125,19 @@ class Browsershot
     {
         $this->proxyServer = $proxyServer;
 
+        return $this;
+    }
+
+    public function setJavaScriptEnabled($enabled)
+    {
+        $this->javascriptEnabled = $enabled;
+
+        return $this;
+    }
+
+    public function setImagesDisabled($disabled) {
+        $this->imagesDisabled = $disabled;
+        
         return $this;
     }
 
@@ -468,6 +483,9 @@ class Browsershot
             $command['browserWSEndpoint'] = $this->browserWSEndpoint;
         }
 
+        $command['javascriptEnabled'] = $this->javascriptEnabled;
+        $command['imagesDisabled'] = $this->imagesDisabled;
+        
         $command['options']['viewport'] = [
             'width' => $this->windowWidth,
             'height' => $this->windowHeight,

@@ -22,6 +22,20 @@ const callChrome = async () => {
 
         page = await browser.newPage();
 
+        if ('javascriptEnabled' in request) {
+            page.setJavaScriptEnabled(request.javascriptEnabled);
+        }
+
+        if ('imagesDisabled' in request && request.imagesDisabled) {
+            page.on('request', interceptedRequest => {
+                if (interceptedRequest.url.endsWith('.png') || interceptedRequest.url.endsWith('.jpg')) {
+                    interceptedRequest.abort();
+                } else {
+                    interceptedRequest.continue();
+                }
+            });
+        }
+
         if (request.options && request.options.dismissDialogs) {
             page.on('dialog', async dialog => {
                 await dialog.dismiss();
